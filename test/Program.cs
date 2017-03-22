@@ -4,8 +4,12 @@ using System.Collections.Generic;
 using JWT;
 using Jose;
 using System.Text;
+using RestSharp.Deserializers;
+using RestSharp.Serializers;
 
- 
+
+using Newtonsoft.Json;
+
 public class HelloWorld
 {
 
@@ -16,7 +20,7 @@ public class HelloWorld
 		private string _partner_url;
 		private bool _debug;
 
-        public SMASHDOCs(string client_id, string client_key, string partner_url, bool debug) {
+      public SMASHDOCs(string client_id, string client_key, string partner_url, bool debug) {
 			_client_id = client_id;
 			_client_key = client_key;
 			_partner_url = partner_url;
@@ -32,7 +36,7 @@ public class HelloWorld
 		{
 			DateTime issued = DateTime.Now;
 			string iss = Guid.NewGuid().ToString();
-			string iat = ToUnixTime(issued).ToString();
+			long  iat = ToUnixTime(issued);
 			string jti = Guid.NewGuid().ToString();
 										
 			var payload = new Dictionary<string, object>()
@@ -50,15 +54,28 @@ public class HelloWorld
 			Console.WriteLine(get_token());
 
             var client = new RestClient();
-            client.BaseUrl = new Uri("http://zopyx.com");
-
+			client.ClearHandlers();
+			RestSharp.Deserializers.JsonDeserializer jsonDeserializer = new JsonDeserializer();
+			client.AddHandler("application/json", jsonDeserializer);
+			client.BaseUrl = new Uri(_partner_url);
             var request = new RestRequest();
-            request.Resource = "/";
+			request.Resource = "/partner/templates/word";
+			request.AddHeader("Content-Type", "application/json");
+			request.AddHeader("x-client-id", _client_id);
+			request.AddHeader("Authorization", "Bearer " + get_token());
 
             IRestResponse response = client.Execute(request);
+			Console.WriteLine("{0}", response.Content);
+
+			dynamic d = JsonConvert.DeserializeObject<dynamic>(response.Content);
+
+			/*
 			Console.WriteLine("{0}", response.ResponseStatus);
 			Console.WriteLine("{0}", (int)response.StatusCode); 
 			Console.WriteLine("{0}", response.Content);
+			Console.WriteLine("{0}", response.Content.Length);
+
+*/
 			return "foo";
       }
 
