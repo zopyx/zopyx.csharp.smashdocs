@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using JWT;
 using Jose;
+using System.Text;
 
  
 public class HelloWorld
@@ -41,7 +42,7 @@ public class HelloWorld
 				{"jti", jti}
 			};
 
-			return Jose.JWT.Encode(payload, _client_key, JwsAlgorithm.HS256);
+			return Jose.JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
 		}
 
         public string new_document() {
@@ -68,18 +69,26 @@ public class HelloWorld
 		string client_id = Environment.GetEnvironmentVariable("SMASHDOCS_CLIENT_ID");
 		string client_key = Environment.GetEnvironmentVariable("SMASHDOCS_CLIENT_KEY");
 		string partner_url = Environment.GetEnvironmentVariable("SMASHDOCS_PARTNER_URL");
-		string debug = Environment.GetEnvironmentVariable("SMASHDOCS_DEBUG");
-		Console.WriteLine("Length {0}");
-		Console.WriteLine("Length {0}", debug.Length);
+		string _debug = Environment.GetEnvironmentVariable("SMASHDOCS_DEBUG");
+		bool debug = false;
+
+		try
+		{
+			if (_debug.Length > 0)
+				debug = true;
+		}
+		catch (Exception)
+		{ 
+		}
+
 
 		Console.WriteLine("Client ID: {0}", client_id);
 		Console.WriteLine("Client KEY: {0}", client_key);
 		Console.WriteLine("Partner URL: {0}", partner_url);
 		Console.WriteLine("DEBUG: {0}", debug);
 
-		bool _debug = true;
 
-        SMASHDOCs sd = new SMASHDOCs(client_id, client_key, partner_url, _debug);
+        SMASHDOCs sd = new SMASHDOCs(client_id, client_key, partner_url, debug);
 		var result = sd.new_document();
 
     }
