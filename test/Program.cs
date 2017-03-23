@@ -6,9 +6,9 @@ using Jose;
 using System.Text;
 using RestSharp.Deserializers;
 using RestSharp.Serializers;
-
-
+using System.Web.Script.Serialization;
 using Newtonsoft.Json;
+using System.Reflection;
 
 public class HelloWorld
 {
@@ -49,9 +49,8 @@ public class HelloWorld
 			return Jose.JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
 		}
 
-        public string new_document() {
+        public string list_templates() {
 
-			Console.WriteLine(get_token());
 
             var client = new RestClient();
 			client.ClearHandlers();
@@ -67,17 +66,57 @@ public class HelloWorld
             IRestResponse response = client.Execute(request);
 			Console.WriteLine("{0}", response.Content);
 
-			dynamic d = JsonConvert.DeserializeObject<dynamic>(response.Content);
-
-			/*
-			Console.WriteLine("{0}", response.ResponseStatus);
-			Console.WriteLine("{0}", (int)response.StatusCode); 
-			Console.WriteLine("{0}", response.Content);
-			Console.WriteLine("{0}", response.Content.Length);
-
-*/
+			var jss = new JavaScriptSerializer();
+			var dict = jss.DeserializeObject(response.Content);
+		
+			       
 			return "foo";
       }
+
+		public string new_document(string title="", string description="", string role="editor", string status="draft")
+		{
+
+			var user_data = new Dictionary<string, string>()
+			{
+				{"email", "info@xx.de"},
+				{"firstname", "Henry"},
+				{"lastname", "Miller"},
+				{"userId", "testuser"},
+				{"company", "Dummies Ltd"},
+			};
+			var data = new Dictionary<string, object>()
+			{
+				{"user", user_data},
+				{"description", description},
+				{"userRole", role},
+				{"status", status},
+				{"sectionHistory", true}
+			};
+			var client = new RestClient();
+
+			Console.WriteLine(data);
+	
+			client.ClearHandlers();
+			RestSharp.Deserializers.JsonDeserializer jsonDeserializer = new JsonDeserializer();
+			client.AddHandler("application/json", jsonDeserializer);
+			client.BaseUrl = new Uri(_partner_url);
+			var request = new RestRequest(Method.POST);
+			request.RequestFormat = DataFormat.Json;
+			request.Resource = "/partner/documents/create";
+			request.AddHeader("Content-Type", "application/json");
+			request.AddHeader("x-client-id", _client_id);
+			request.AddHeader("Authorization", "Bearer " + get_token());
+			request.AddBody(new { dict = data });
+			       
+			IRestResponse response = client.Execute(request);
+			Console.WriteLine("{0}", response.Content);
+
+			var jss = new JavaScriptSerializer();
+			var dict = jss.DeserializeObject(response.Content);
+
+
+			return "foo";
+		}
 
     }
 
@@ -99,14 +138,8 @@ public class HelloWorld
 		}
 
 
-		Console.WriteLine("Client ID: {0}", client_id);
-		Console.WriteLine("Client KEY: {0}", client_key);
-		Console.WriteLine("Partner URL: {0}", partner_url);
-		Console.WriteLine("DEBUG: {0}", debug);
-
-
         SMASHDOCs sd = new SMASHDOCs(client_id, client_key, partner_url, debug);
-		var result = sd.new_document();
-
+		var result = sd.list_templates();
+		result = sd.new_document();
     }
 }
