@@ -6,9 +6,11 @@ using Jose;
 using System.Text;
 using RestSharp.Deserializers;
 using RestSharp.Serializers;
-using System.Web.Script.Serialization;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Reflection;
+using System.Collections;
+
 
 public class HelloWorld
 {
@@ -49,6 +51,27 @@ public class HelloWorld
 			return Jose.JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
 		}
 
+        public static IList<T> DeserializeToList<T>(string jsonString)
+        {
+            var array = JArray.Parse(jsonString);
+            IList<T> objectsList = new List<T>();
+
+            foreach (var item in array)
+            {
+                try
+                {
+                    // CorrectElements
+                    objectsList.Add(item.ToObject<T>());
+                }
+                catch (Exception ex)
+                {
+                }
+            }
+
+            return objectsList;
+        }
+
+
         public string list_templates() {
 
 
@@ -65,12 +88,7 @@ public class HelloWorld
 
             IRestResponse response = client.Execute(request);
 			Console.WriteLine("{0}", response.Content);
-
-			var jss = new JavaScriptSerializer();
-			var dict = jss.DeserializeObject(response.Content);
-		
-			       
-			return "foo";
+            return "foo";
       }
 
 		public string new_document(string title="", string description="", string role="editor", string status="draft")
@@ -111,9 +129,6 @@ public class HelloWorld
 			IRestResponse response = client.Execute(request);
 			Console.WriteLine("{0}", response.Content);
 
-			var jss = new JavaScriptSerializer();
-			var dict = jss.DeserializeObject(response.Content);
-
 
 			return "foo";
 		}
@@ -140,6 +155,8 @@ public class HelloWorld
 
         SMASHDOCs sd = new SMASHDOCs(client_id, client_key, partner_url, debug);
 		var result = sd.list_templates();
+        /*
 		result = sd.new_document();
+        */
     }
 }
