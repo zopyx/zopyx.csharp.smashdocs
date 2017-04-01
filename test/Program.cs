@@ -51,10 +51,81 @@ public class HelloWorld
 			return Jose.JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
 		}
 
+		private void  check_response(IRestResponse response)
+		{
+			int status_code = (int)response.StatusCode;
+			if (status_code != 200)
+			{
+				throw new Exception($"Status code: {status_code}");
+			}
+		}
 
 
+		public JObject document_info(string document_id)
+		{
 
-        public JArray list_templates() {
+			var client = new RestClient();
+			client.BaseUrl = new Uri(_partner_url);
+			string url =  $"/partner/documents/{document_id}";
+	
+			var request = new RestRequest(url);
+			request.AddHeader("Content-Type", "application/json");
+			request.AddHeader("x-client-id", _client_id);
+			request.AddHeader("Authorization", "Bearer " + get_token());
+
+			IRestResponse response = client.Execute(request);
+			check_response(response);
+			JObject result = JObject.Parse(response.Content);
+			return result;
+		}
+
+		public void  delete_document(string document_id)
+		{
+
+			var client = new RestClient(_partner_url);
+			string url = $"/partner/documents/{document_id}/delete";
+			var request = new RestRequest(url, Method.DELETE);
+			request.AddHeader("Content-Type", "application/json");
+			request.AddHeader("x-client-id", _client_id);
+			request.AddHeader("Authorization", "Bearer " + get_token());
+
+			IRestResponse response = client.Execute(request);
+			check_response(response);
+		}
+
+		public void archive_document(string document_id)
+		{
+
+			var client = new RestClient(_partner_url);
+			string url = $"/partner/documents/{document_id}/archive";
+
+			var request = new RestRequest(url, Method.POST);
+			request.AddHeader("Content-Type", "application/json");
+			request.AddHeader("x-client-id", _client_id);
+			request.AddHeader("Authorization", "Bearer " + get_token());
+
+			IRestResponse response = client.Execute(request);
+			check_response(response);
+
+		}
+
+		public void unarchive_document(string document_id)
+		{
+
+			var client = new RestClient(_partner_url);
+			string url = $"/partner/documents/{document_id}/unarchive";
+
+			var request = new RestRequest(url, Method.POST);
+			request.AddHeader("Content-Type", "application/json");
+			request.AddHeader("x-client-id", _client_id);
+			request.AddHeader("Authorization", "Bearer " + get_token());
+
+			IRestResponse response = client.Execute(request);
+			check_response(response);
+
+		}
+
+		public JArray list_templates() {
 
             var client = new RestClient();
 			client.BaseUrl = new Uri(_partner_url);
@@ -65,6 +136,7 @@ public class HelloWorld
 			request.AddHeader("Authorization", "Bearer " + get_token());
 
             IRestResponse response = client.Execute(request);
+			check_response(response);
 			Console.WriteLine(response.Content);
 			JArray result = JArray.Parse(response.Content);
 			return result;
@@ -100,6 +172,7 @@ public class HelloWorld
 			request.AddJsonBody(data);
 						       
 			IRestResponse response = client.Execute(request);
+			check_response(response);
 			JObject result = JObject.Parse(response.Content);
 			return result;
 		}
@@ -124,10 +197,17 @@ public class HelloWorld
 		}
 
 
-        SMASHDOCs sd = new SMASHDOCs(client_id, client_key, partner_url, debug);
+		var sd = new SMASHDOCs(client_id, client_key, partner_url, debug);
 		JArray result = sd.list_templates();
 		Console.WriteLine(result);
 	    JObject result2  = sd.new_document("my title", "my description");
 		Console.WriteLine(result2);
-    }
+		string document_id = (string) result2["documentId"];
+		JObject metadata = sd.document_info(document_id);
+		Console.WriteLine(metadata);
+		sd.archive_document(document_id);
+		sd.unarchive_document(document_id);
+		sd.delete_document(document_id);
+		metadata = sd.document_info(document_id);
+     }
 }
