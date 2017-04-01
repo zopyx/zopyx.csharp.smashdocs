@@ -51,34 +51,12 @@ public class HelloWorld
 			return Jose.JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
 		}
 
-        public static IList<T> DeserializeToList<T>(string jsonString)
-        {
-            var array = JArray.Parse(jsonString);
-            IList<T> objectsList = new List<T>();
-
-            foreach (var item in array)
-            {
-                try
-                {
-                    // CorrectElements
-                    objectsList.Add(item.ToObject<T>());
-                }
-                catch (Exception ex)
-                {
-                }
-            }
-
-            return objectsList;
-        }
 
 
-        public string list_templates() {
 
+        public JArray list_templates() {
 
             var client = new RestClient();
-			client.ClearHandlers();
-			RestSharp.Deserializers.JsonDeserializer jsonDeserializer = new JsonDeserializer();
-			client.AddHandler("application/json", jsonDeserializer);
 			client.BaseUrl = new Uri(_partner_url);
             var request = new RestRequest();
 			request.Resource = "/partner/templates/word";
@@ -87,13 +65,13 @@ public class HelloWorld
 			request.AddHeader("Authorization", "Bearer " + get_token());
 
             IRestResponse response = client.Execute(request);
-			Console.WriteLine("{0}", response.Content);
-            return "foo";
+			Console.WriteLine(response.Content);
+			JArray result = JArray.Parse(response.Content);
+			return result;
       }
 
-		public string new_document(string title="", string description="", string role="editor", string status="draft")
+		public JObject new_document(string title="", string description="", string role="editor", string status="draft")
 		{
-
 			var user_data = new Dictionary<string, string>()
 			{
 				{"email", "info@xx.de"},
@@ -105,32 +83,25 @@ public class HelloWorld
 			var data = new Dictionary<string, object>()
 			{
 				{"user", user_data},
+				{"title", title},
 				{"description", description},
 				{"userRole", role},
+				{"groupId", "testgrp"},
 				{"status", status},
 				{"sectionHistory", true}
 			};
 			var client = new RestClient();
-
-			Console.WriteLine(data);
-	
-			client.ClearHandlers();
-			RestSharp.Deserializers.JsonDeserializer jsonDeserializer = new JsonDeserializer();
-			client.AddHandler("application/json", jsonDeserializer);
 			client.BaseUrl = new Uri(_partner_url);
 			var request = new RestRequest(Method.POST);
-			request.RequestFormat = DataFormat.Json;
 			request.Resource = "/partner/documents/create";
 			request.AddHeader("Content-Type", "application/json");
 			request.AddHeader("x-client-id", _client_id);
 			request.AddHeader("Authorization", "Bearer " + get_token());
-			request.AddBody(new { dict = data });
-			       
+			request.AddJsonBody(data);
+						       
 			IRestResponse response = client.Execute(request);
-			Console.WriteLine("{0}", response.Content);
-
-
-			return "foo";
+			JObject result = JObject.Parse(response.Content);
+			return result;
 		}
 
     }
@@ -154,9 +125,9 @@ public class HelloWorld
 
 
         SMASHDOCs sd = new SMASHDOCs(client_id, client_key, partner_url, debug);
-		var result = sd.list_templates();
-        /*
-		result = sd.new_document();
-        */
+		JArray result = sd.list_templates();
+		Console.WriteLine(result);
+	    JObject result2  = sd.new_document("my title", "my description");
+		Console.WriteLine(result2);
     }
 }
