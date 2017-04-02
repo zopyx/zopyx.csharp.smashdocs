@@ -15,6 +15,24 @@ using System.Collections;
 public class HelloWorld
 {
 
+
+	public class SMASHDOCsException : Exception
+	{
+		public SMASHDOCsException()
+		{
+		}
+
+		public SMASHDOCsException(string message)
+        : base(message)
+        {
+		}
+
+		public SMASHDOCsException(string message, Exception inner)
+        : base(message, inner)
+        {
+		}
+	}
+
     public class SMASHDOCs {
         
 		private string _client_id; 
@@ -51,33 +69,37 @@ public class HelloWorld
 			return Jose.JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
 		}
 
-		private void  check_response(IRestResponse response)
+		private void  check_response(IRestResponse response, Exception exc=null)
 		{
 			int status_code = (int)response.StatusCode;
 			if (status_code != 200)
 			{
-				Console.WriteLine("Error:");
-				Console.WriteLine(response.Content);
-				throw new Exception($"Status code: {status_code}");
+				Console.WriteLine(exc);
+				string msg = $"Error: HTTP/{status_code}";
+				msg += $"\nMsg: {response.Content}";
+				msg += $"\nURL: {response.ResponseUri}";
+				msg += "\n";
+				if (exc == null)
+					throw new SMASHDOCsException(msg);
+				/*
+				else
+					throw new exc(msg);
+					*/
 			}
 		}
 
-		public IRestResponse make_request(string url, Method method, Dictionary<string, object> data = null)
+		public IRestResponse make_request(string url, Method method, Dictionary<string, object> data = null, Exception exc=null)
 		{
-
-			var client = new RestClient();
-			client.BaseUrl = new Uri(_partner_url);
+			var client = new RestClient(_partner_url);
 			var request = new RestRequest(url, method);
 
 			request.AddHeader("Content-Type", "application/json");
 			request.AddHeader("x-client-id", _client_id);
 			request.AddHeader("Authorization", "Bearer " + get_token());
 			if (data != null)
-			{
 				request.AddJsonBody(data);
-			}
 			IRestResponse response = client.Execute(request);
-			check_response(response);
+			check_response(response, exc);
 			return response;
 		}
 
@@ -92,6 +114,12 @@ public class HelloWorld
 		{
 			string url = $"/partner/documents/{document_id}";
 			make_request(url, Method.DELETE);
+		}
+
+		public void review_document(string document_id)
+		{
+			string url = $"/partner/documents/{document_id}/review";
+			make_request(url, Method.POST);
 		}
 
 		public void archive_document(string document_id)
@@ -122,43 +150,24 @@ public class HelloWorld
 
 			string url = "";
 			if (format == "html")
-			{
 				url = $"/partner/documents/{document_id}/export/html";
-			}
 			else if (format == "sdxml")
-			{
 				url = $"/partner/documents/{document_id}/export/sdxml";
-			}
 			else if (format == "docx")
 			{
 				url = $"/partner/documents/{document_id}/export/word";
 				if (settings == null)
-				{
 					data["settings"] = new Dictionary<string, string>();
-				}
-				else			{
+				else			
 					data["settings"] = settings;
-				}
 				data["templateId"] = template_id;
 			}
 			else
-			{
 				throw new Exception($"Unknown format {format}");
-			}
 
 
-			var client = new RestClient();
-			client.BaseUrl = new Uri(_partner_url);
-			var request = new RestRequest(Method.POST);
-			Console.WriteLine(url); 
-			request.Resource = url;
-			request.AddHeader("Content-Type", "application/json");
-			request.AddHeader("x-client-id", _client_id);
-			request.AddHeader("Authorization", "Bearer " + get_token());
-			request.AddJsonBody(data);
 
-			IRestResponse response = client.Execute(request);
-			check_response(response);
+			IRestResponse response = make_request(url, Method.POST, data);
 
 			string ext = (format == "docx") ? ".docx" : ".zip";
 			string fn = System.IO.Path.GetTempPath() + Guid.NewGuid().ToString() + ext;
@@ -233,5 +242,12 @@ public class HelloWorld
 		Console.WriteLine(sd.export_document(document_id, user_id: "ajung", template_id: template_id, format: "docx"));
 
 		sd.delete_document(document_id);
+
+
+		result2 = sd.new_document("my title", "my description");
+		Console.WriteLine(result2);
+		document_id = (string)result2["documentId"];
+		sd.review_document(document_id);
+
      }
 }
