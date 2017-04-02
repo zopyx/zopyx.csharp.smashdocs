@@ -1,7 +1,6 @@
 using RestSharp;
 using System;
 using System.Collections.Generic;
-using JWT;
 using Jose;
 using System.Text;
 using RestSharp.Deserializers;
@@ -17,7 +16,7 @@ public class HelloWorld
 
     public class SMASHDOCs {
         
-		private string _client_id;
+		private string _client_id; 
 		private string _client_key;
 		private string _partner_url;
 		private bool _debug;
@@ -83,7 +82,7 @@ public class HelloWorld
 		{
 
 			var client = new RestClient(_partner_url);
-			string url = $"/partner/documents/{document_id}/delete";
+			string url = $"/partner/documents/{document_id}";
 			var request = new RestRequest(url, Method.DELETE);
 			request.AddHeader("Content-Type", "application/json");
 			request.AddHeader("x-client-id", _client_id);
@@ -141,6 +140,12 @@ public class HelloWorld
 			JArray result = JArray.Parse(response.Content);
 			return result;
       }
+
+
+		public string export_document(string document_id, string user_id, string template_id="", string format = "docx", Dictionary<string, string> settings=null)
+		{
+			return "foo";
+		}
 
 		public JObject new_document(string title="", string description="", string role="editor", string status="draft")
 		{
@@ -205,9 +210,15 @@ public class HelloWorld
 		string document_id = (string) result2["documentId"];
 		JObject metadata = sd.document_info(document_id);
 		Console.WriteLine(metadata);
+
 		sd.archive_document(document_id);
 		sd.unarchive_document(document_id);
+
 		sd.delete_document(document_id);
 		metadata = sd.document_info(document_id);
+
+
+
+
      }
 }
