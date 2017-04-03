@@ -1,12 +1,10 @@
 using RestSharp;
 using Jose;
-using RestSharp.Serializers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Text;
 using System.IO;
-using System.Collections;
 using System.Collections.Generic;
 
 public class HelloWorld
@@ -30,11 +28,11 @@ public class HelloWorld
 
 	public class SMASHDOCs
 	{
-		private string _client_id;
-		private string _client_key;
-		private string _partner_url;
-		private string _group_id;
-		private bool _debug;
+		string _client_id;
+		string _client_key;
+		string _partner_url;
+		string _group_id;
+		bool _debug;
 
 		public SMASHDOCs(string client_id, string client_key, string partner_url, string group_id, bool debug = false)
 		{
@@ -64,10 +62,10 @@ public class HelloWorld
 				{"jti", jti}
 			};
 
-			return Jose.JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
+			return JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
 		}
 
-		private void check_response(IRestResponse response)
+		 void check_response(IRestResponse response)
 		{
 			int status_code = (int)response.StatusCode;
 			if (status_code != 200)
@@ -80,7 +78,7 @@ public class HelloWorld
 			}
 		}
 
-		public IRestResponse make_request(string url, Method method, Dictionary<string, object> data = null, string filename = null, Exception exc = null)
+		public IRestResponse make_request(string url, Method method, Dictionary<string, object> data = null, string filename = null)
 		{
 			var client = new RestClient(_partner_url);
 			var request = new RestRequest(url, method);
@@ -170,21 +168,29 @@ public class HelloWorld
 			};
 
 			string url = "";
-			if (format == "html")
-				url = $"/partner/documents/{document_id}/export/html";
-			else if (format == "sdxml")
-				url = $"/partner/documents/{document_id}/export/sdxml";
-			else if (format == "docx")
+
+			switch (format)
 			{
-				url = $"/partner/documents/{document_id}/export/word";
-				if (settings == null)
-					data["settings"] = new Dictionary<string, string>();
-				else
-					data["settings"] = settings;
-				data["templateId"] = template_id;
+				case "html":
+					url = $"/partner/documents/{document_id}/export/html";
+					break;
+
+				case "docx":
+					url = $"/partner/documents/{document_id}/export/word";
+					if (settings == null)
+						data["settings"] = new Dictionary<string, string>();
+					else
+						data["settings"] = settings;
+					data["templateId"] = template_id;
+					break;
+
+        		case "sdxml":
+					url = $"/partner/documents/{document_id}/export/sdxml";
+					break;
+				default:
+					throw new Exception($"Unknown format {format}");
+					
 			}
-			else
-				throw new Exception($"Unknown format {format}");
 
 			IRestResponse response = make_request(url, Method.POST, data);
 
@@ -274,7 +280,7 @@ public class HelloWorld
 				{"firstname", "Henry"},
 				{"lastname", "Miller"},
 				{"userId", "testuser"},
-				{"company", "Dummies Ltd"},
+				{"company", "Dummies Ltd"}
 			};
 
 		var sd = new SMASHDOCs(client_id, client_key, partner_url, debug: debug, group_id: "testgrp");
