@@ -36,14 +36,13 @@ public class HelloWorld
 		private string _group_id;
 		private bool _debug;
 
-		public SMASHDOCs(string client_id, string client_key, string partner_url, string group_id, bool debug)
+		public SMASHDOCs(string client_id, string client_key, string partner_url, string group_id, bool debug = false)
 		{
 			_client_id = client_id;
 			_client_key = client_key;
 			_partner_url = partner_url;
 			_debug = debug;
 			_group_id = group_id;
-			_debug = true;
 		}
 
 		static long ToUnixTime(DateTime dateTime)
