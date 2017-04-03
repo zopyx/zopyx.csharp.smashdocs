@@ -267,7 +267,7 @@ public class Runner
 		string client_id = Environment.GetEnvironmentVariable("SMASHDOCS_CLIENT_ID");
 		string client_key = Environment.GetEnvironmentVariable("SMASHDOCS_CLIENT_KEY");
 		string partner_url = Environment.GetEnvironmentVariable("SMASHDOCS_PARTNER_URL");
-		bool debug = Environment.GetEnvironmentVariable("SMASHDOCS_DEBUG") == null;
+		bool debug = Environment.GetEnvironmentVariable("SMASHDOCS_DEBUG") != null;
 
 		var user_data = new Dictionary<string, string>()
 			{
