@@ -4,12 +4,12 @@ using System.Runtime.CompilerServices;
 // Information about this assembly is defined by the following attributes. 
 // Change them to the values specific to your project.
 
-[assembly: AssemblyTitle("test")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("SMASHDOCs")]
+[assembly: AssemblyDescription("SMASHDOCs Partner API wrapper for C#")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("ZOPYX")]
 [assembly: AssemblyProduct("")]
-[assembly: AssemblyCopyright("${AuthorCopyright}")]
+[assembly: AssemblyCopyright("${(C) 2017, Andreas Jung, ZOPYX}")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
