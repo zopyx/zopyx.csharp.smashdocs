@@ -99,6 +99,7 @@ public class SMASHDOCs
 
 		if (_debug)
 		{
+            Console.WriteLine("### REQUEST ###");
 			Console.WriteLine($"URL: {url}");
 			Console.WriteLine($"Method: {method}");
 			Console.WriteLine("Parameters:");
@@ -106,11 +107,15 @@ public class SMASHDOCs
 		}
 
 		IRestResponse response = client.Execute(request);
+        int status_code = (int) response.StatusCode;
 		if (_debug)
 		{
-			Console.WriteLine($"Status: {response.StatusCode}");
+            Console.WriteLine("### RESPONSE ###");
+			Console.WriteLine($"HTTP status: {status_code}");
 			Console.WriteLine("Headers:");
-			Console.WriteLine(response.Headers);
+            foreach (var h in response.Headers) {
+                Console.WriteLine($"\t{h}");
+            }
 		}
 
 		check_response(response);
