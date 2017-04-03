@@ -11,8 +11,6 @@ using System.Collections.Generic;
 
 public class HelloWorld
 {
-
-
 	public class SMASHDOCsException : Exception
 	{
 		public SMASHDOCsException()
@@ -80,7 +78,6 @@ public class HelloWorld
 				msg += $"\nURL: {response.ResponseUri}";
 				msg += "\n";
 				throw new SMASHDOCsException(msg);
-
 			}
 		}
 
