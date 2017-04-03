@@ -1,102 +1,98 @@
 using RestSharp;
-using System;
-using System.Collections.Generic;
 using Jose;
-using System.Text;
-using System.IO;
-using RestSharp.Deserializers;
 using RestSharp.Serializers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Reflection;
+using System;
+using System.Text;
+using System.IO;
 using System.Collections;
-
+using System.Collections.Generic;
 
 public class HelloWorld
 {
 
 
-    public class SMASHDOCsException : Exception
-    {
-        public SMASHDOCsException()
-        {
-        }
+	public class SMASHDOCsException : Exception
+	{
+		public SMASHDOCsException()
+		{
+		}
 
-        public SMASHDOCsException(string message)
-        : base(message)
-        {
-        }
+		public SMASHDOCsException(string message)
+		: base(message)
+		{
+		}
 
-        public SMASHDOCsException(string message, Exception inner)
-        : base(message, inner)
-        {
-        }
-    }
+		public SMASHDOCsException(string message, Exception inner)
+		: base(message, inner)
+		{
+		}
+	}
 
-    public class SMASHDOCs {
+	public class SMASHDOCs
+	{
+		private string _client_id;
+		private string _client_key;
+		private string _partner_url;
+		private string _group_id;
+		private bool _debug;
 
-        private string _client_id;
-        private string _client_key;
-        private string _partner_url;
-        private bool _debug;
+		public SMASHDOCs(string client_id, string client_key, string partner_url, string group_id, bool debug)
+		{
+			_client_id = client_id;
+			_client_key = client_key;
+			_partner_url = partner_url;
+			_debug = debug;
+			_group_id = group_id;
+			_debug = true;
+		}
 
-        public SMASHDOCs(string client_id, string client_key, string partner_url, bool debug) {
-            _client_id = client_id;
-            _client_key = client_key;
-            _partner_url = partner_url;
-            _debug = debug;
-        }
+		static long ToUnixTime(DateTime dateTime)
+		{
+			return (int)(dateTime.ToUniversalTime().Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+		}
 
-        static long ToUnixTime(DateTime dateTime)
-        {
-            return (int)(dateTime.ToUniversalTime().Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
-        }
+		private string get_token()
+		{
+			DateTime issued = DateTime.Now;
+			string iss = Guid.NewGuid().ToString();
+			long iat = ToUnixTime(issued);
+			string jti = Guid.NewGuid().ToString();
 
-        private string get_token()
-        {
-            DateTime issued = DateTime.Now;
-            string iss = Guid.NewGuid().ToString();
-            long  iat = ToUnixTime(issued);
-            string jti = Guid.NewGuid().ToString();
+			var payload = new Dictionary<string, object>()
+			{
+				{"iss", iss},
+				{"iat", iat},
+				{"jti", jti}
+			};
 
-            var payload = new Dictionary<string, object>()
-            {
-                {"iss", iss},
-                {"iat", iat},
-                {"jti", jti}
-            };
+			return Jose.JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
+		}
 
-            return Jose.JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
-        }
+		private void check_response(IRestResponse response)
+		{
+			int status_code = (int)response.StatusCode;
+			if (status_code != 200)
+			{
+				string msg = $"Error: HTTP/{status_code}";
+				msg += $"\nMsg: {response.Content}";
+				msg += $"\nURL: {response.ResponseUri}";
+				msg += "\n";
+				throw new SMASHDOCsException(msg);
 
-        private void check_response(IRestResponse response, Exception exc=null)
-        {
-            int status_code = (int)response.StatusCode;
-            if (status_code != 200)
-            {
-                Console.WriteLine(exc);
-                string msg = $"Error: HTTP/{status_code}";
-                msg += $"\nMsg: {response.Content}";
-                msg += $"\nURL: {response.ResponseUri}";
-                msg += "\n";
-                if (exc == null)
-                    throw new SMASHDOCsException(msg);
-                /*
-                else
-                	throw new exc(msg);
-                	*/
-            }
-        }
+			}
+		}
 
-        public IRestResponse make_request(string url, Method method, Dictionary<string, object> data = null, string filename=null, Exception exc=null)
-        {
-            var client = new RestClient(_partner_url);
-            var request = new RestRequest(url, method);
+		public IRestResponse make_request(string url, Method method, Dictionary<string, object> data = null, string filename = null, Exception exc = null)
+		{
+			var client = new RestClient(_partner_url);
+			var request = new RestRequest(url, method);
 
-            request.AddHeader("Content-Type", "application/json");
-            request.AddHeader("x-client-id", _client_id);
-            request.AddHeader("Authorization", "Bearer " + get_token());
-       
+			request.AddHeader("Content-Type", "application/json");
+			request.AddHeader("x-client-id", _client_id);
+			request.AddHeader("Authorization", "Bearer " + get_token());
+
 			if (filename != null)
 			{
 				request.AddParameter("data", JsonConvert.SerializeObject(data));
@@ -108,89 +104,105 @@ public class HelloWorld
 				if (data != null)
 					request.AddJsonBody(data);
 			}
-            IRestResponse response = client.Execute(request);
-            check_response(response, exc);
-            return response;
-        }
 
-        public JObject document_info(string document_id)
-        {
-            string url =  $"/partner/documents/{document_id}";
-            IRestResponse response = make_request(url, Method.GET);
-            return JObject.Parse(response.Content);
-        }
+			if (_debug)
+			{
+				Console.WriteLine($"URL: {url}");
+				Console.WriteLine($"Method: {method}");
+				Console.WriteLine("Parameters:");
+				request.Parameters.ForEach(i => Console.WriteLine("\t{0}", i));
+			}
 
-        public void  delete_document(string document_id)
-        {
-            string url = $"/partner/documents/{document_id}";
-            make_request(url, Method.DELETE);
-        }
+			IRestResponse response = client.Execute(request);
+			if (_debug)
+			{
 
-        public void review_document(string document_id)
-        {
-            string url = $"/partner/documents/{document_id}/review";
-            make_request(url, Method.POST);
-        }
+				Console.WriteLine($"Status: {response.StatusCode}");
+				Console.WriteLine("Headers:");
+				Console.WriteLine(response.Headers);
+			}
 
-        public void archive_document(string document_id)
-        {
-            string url = $"/partner/documents/{document_id}/archive";
-            make_request(url, Method.POST);
-        }
+			check_response(response);
+			return response;
+		}
 
+		public JObject document_info(string document_id)
+		{
+			string url = $"/partner/documents/{document_id}";
+			IRestResponse response = make_request(url, Method.GET);
+			return JObject.Parse(response.Content);
+		}
 
-        public void unarchive_document(string document_id)
-        {
-            string url = $"/partner/documents/{document_id}/unarchive";
-            make_request(url, Method.POST);
-        }
+		public void delete_document(string document_id)
+		{
+			string url = $"/partner/documents/{document_id}";
+			make_request(url, Method.DELETE);
+		}
 
-        public JArray list_templates() {
-            IRestResponse response = make_request("/partner/templates/word", Method.GET);
-            return  JArray.Parse(response.Content);
-        }
+		public void review_document(string document_id)
+		{
+			string url = $"/partner/documents/{document_id}/review";
+			make_request(url, Method.POST);
+		}
 
-
-        public string export_document(string document_id, string user_id, string template_id="", string format = "docx", Dictionary<string, string> settings=null)
-        {
-            var data = new Dictionary<string, object>()
-            {
-                {"userId", user_id
-                }
-            };
-
-            string url = "";
-            if (format == "html")
-                url = $"/partner/documents/{document_id}/export/html";
-            else if (format == "sdxml")
-                url = $"/partner/documents/{document_id}/export/sdxml";
-            else if (format == "docx")
-            {
-                url = $"/partner/documents/{document_id}/export/word";
-                if (settings == null)
-                    data["settings"] = new Dictionary<string, string>();
-                else
-                    data["settings"] = settings;
-                data["templateId"] = template_id;
-            }
-            else
-                throw new Exception($"Unknown format {format}");
+		public void archive_document(string document_id)
+		{
+			string url = $"/partner/documents/{document_id}/archive";
+			make_request(url, Method.POST);
+		}
 
 
+		public void unarchive_document(string document_id)
+		{
+			string url = $"/partner/documents/{document_id}/unarchive";
+			make_request(url, Method.POST);
+		}
 
-            IRestResponse response = make_request(url, Method.POST, data);
+		public JArray list_templates()
+		{
+			IRestResponse response = make_request("/partner/templates/word", Method.GET);
+			return JArray.Parse(response.Content);
+		}
 
-            string ext = (format == "docx") ? ".docx" : ".zip";
-            string fn = System.IO.Path.GetTempPath() + Guid.NewGuid().ToString() + ext;
-            FileStream fs = new FileStream(fn, FileMode.CreateNew);
-            BinaryWriter bw = new BinaryWriter(fs);
-            bw.Write(response.RawBytes);
-            bw.Close();
-            fs.Close();
-            return fn;
-        }
 
-		public JObject upload_document(string filename, string title="", string description="", string role="", string status="draft",  Dictionary<string, string> user_data=null)
+		public string export_document(string document_id, string user_id, string template_id = "", string format = "docx", Dictionary<string, string> settings = null)
+		{
+			var data = new Dictionary<string, object>()
+			{
+				{"userId", user_id
+				}
+			};
+
+			string url = "";
+			if (format == "html")
+				url = $"/partner/documents/{document_id}/export/html";
+			else if (format == "sdxml")
+				url = $"/partner/documents/{document_id}/export/sdxml";
+			else if (format == "docx")
+			{
+				url = $"/partner/documents/{document_id}/export/word";
+				if (settings == null)
+					data["settings"] = new Dictionary<string, string>();
+				else
+					data["settings"] = settings;
+				data["templateId"] = template_id;
+			}
+			else
+				throw new Exception($"Unknown format {format}");
+
+			IRestResponse response = make_request(url, Method.POST, data);
+
+			string ext = (format == "docx") ? ".docx" : ".zip";
+			string fn = System.IO.Path.GetTempPath() + Guid.NewGuid().ToString() + ext;
+			FileStream fs = new FileStream(fn, FileMode.CreateNew);
+			BinaryWriter bw = new BinaryWriter(fs);
+			bw.Write(response.RawBytes);
+			bw.Close();
+			fs.Close();
+			return fn;
+		}
+
+		public JObject upload_document(string filename, string title = "", string description = "", string role = "", string status = "draft", Dictionary<string, string> user_data = null)
 		{
 			var data = new Dictionary<string, object>()
 			{
@@ -198,58 +210,54 @@ public class HelloWorld
 				{"title", title},
 				{"description", description},
 				{"userRole", role},
-				{"groupId", "testgrp"},
+				{"groupId", _group_id},
 				{"status", status},
 				{"sectionHistory", true}
 			};
 
-
 			string endpoint = filename.ToLower().EndsWith(".docx") ? "word" : "sdxml";
 			string url = $"/partner/imports/{endpoint}/upload";
-
-			IRestResponse response = make_request(url, 
-			                                      Method.POST, 
-			                                      data: data, 
-			                                      filename: filename);
+			IRestResponse response = make_request(url,
+												  Method.POST,
+												  data: data,
+												  filename: filename);
 			return JObject.Parse(response.Content);
 		}
 
-		public JObject new_document(string title = "", string description = "", string role = "editor", string status = "draft", Dictionary<string, string> user_data=null)
-        {
-    
-            var data = new Dictionary<string, object>()
-            {
-                {"user", user_data},
-                {"title", title},
-                {"description", description},
-                {"userRole", role},
-                {"groupId", "testgrp"},
-                {"status", status},
-                {"sectionHistory", true}
-            };
+		public JObject new_document(string title = "", string description = "", string role = "editor", string status = "draft", Dictionary<string, string> user_data = null)
+		{
+			var data = new Dictionary<string, object>()
+			{
+				{"user", user_data},
+				{"title", title},
+				{"description", description},
+				{"userRole", role},
+				{"groupId", _group_id},
+				{"status", status},
+				{"sectionHistory", true}
+			};
 
-            IRestResponse response = make_request("/partner/documents/create", Method.POST, data);
-            return JObject.Parse(response.Content);
-        }
-    }
+			IRestResponse response = make_request("/partner/documents/create", Method.POST, data);
+			return JObject.Parse(response.Content);
+		}
+	}
 
-    static public void Main ()
-    {
-        string client_id = Environment.GetEnvironmentVariable("SMASHDOCS_CLIENT_ID");
-        string client_key = Environment.GetEnvironmentVariable("SMASHDOCS_CLIENT_KEY");
-        string partner_url = Environment.GetEnvironmentVariable("SMASHDOCS_PARTNER_URL");
-        string _debug = Environment.GetEnvironmentVariable("SMASHDOCS_DEBUG");
-        bool debug = false;
+	static public void Main()
+	{
+		string client_id = Environment.GetEnvironmentVariable("SMASHDOCS_CLIENT_ID");
+		string client_key = Environment.GetEnvironmentVariable("SMASHDOCS_CLIENT_KEY");
+		string partner_url = Environment.GetEnvironmentVariable("SMASHDOCS_PARTNER_URL");
+		string _debug = Environment.GetEnvironmentVariable("SMASHDOCS_DEBUG");
+		bool debug = false;
 
-        try
-        {
-            if (_debug.Length > 0)
-                debug = true;
-        }
-        catch (Exception)
-        {
-        }
-
+		try
+		{
+			if (_debug.Length > 0)
+				debug = true;
+		}
+		catch (Exception)
+		{
+		}
 
 		var user_data = new Dictionary<string, string>()
 			{
@@ -260,35 +268,32 @@ public class HelloWorld
 				{"company", "Dummies Ltd"},
 			};
 
-        var sd = new SMASHDOCs(client_id, client_key, partner_url, debug);
+		var sd = new SMASHDOCs(client_id, client_key, partner_url, debug: debug, group_id: "testgrp");
 		JObject r1 = sd.upload_document("/tmp/test.docx", role: "editor", user_data: user_data);
 		Console.WriteLine(r1);
 
+		JArray templates = sd.list_templates();
+		Console.WriteLine(templates);
+		JObject result2 = sd.new_document("my title", "my description", user_data: user_data);
+		Console.WriteLine(result2);
+		string document_id = (string)result2["documentId"];
+		JObject metadata = sd.document_info(document_id);
+		Console.WriteLine(metadata);
 
-        JArray templates = sd.list_templates();
-        Console.WriteLine(templates);
-        JObject result2  = sd.new_document("my title", "my description", user_data: user_data);
-        Console.WriteLine(result2);
-        string document_id = (string) result2["documentId"];
-        JObject metadata = sd.document_info(document_id);
-        Console.WriteLine(metadata);
-
-        sd.archive_document(document_id);
-        sd.unarchive_document(document_id);
-
-
-        Console.WriteLine(sd.export_document(document_id, user_id: "ajung", template_id: "", format: "html"));
-        Console.WriteLine(sd.export_document(document_id, user_id: "ajung", template_id: "", format: "sdxml"));
-        string template_id = (string) templates[0]["id"];
-        Console.WriteLine(sd.export_document(document_id, user_id: "ajung", template_id: template_id, format: "docx"));
-
-        sd.delete_document(document_id);
+		sd.archive_document(document_id);
+		sd.unarchive_document(document_id);
 
 
-        result2 = sd.new_document("my title", "my description");
-        Console.WriteLine(result2);
-        document_id = (string)result2["documentId"];
-        sd.review_document(document_id);
+		Console.WriteLine(sd.export_document(document_id, user_id: "ajung", template_id: "", format: "html"));
+		Console.WriteLine(sd.export_document(document_id, user_id: "ajung", template_id: "", format: "sdxml"));
+		string template_id = (string)templates[0]["id"];
+		Console.WriteLine(sd.export_document(document_id, user_id: "ajung", template_id: template_id, format: "docx"));
 
-    }
+		sd.delete_document(document_id);
+
+		result2 = sd.new_document("my title", "my description");
+		Console.WriteLine(result2);
+		document_id = (string)result2["documentId"];
+		sd.review_document(document_id);
+	}
 }
