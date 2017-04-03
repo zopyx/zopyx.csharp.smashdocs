@@ -202,6 +202,19 @@ public class HelloWorld
 			return fn;
 		}
 
+		public JArray get_documents(string user_id = null, string group_id = null)
+		{
+			var data = new Dictionary<string, object>();
+			if (user_id != null)
+				data["userId"] = user_id;
+			if (group_id != null)
+				data["groupId"] = group_id;
+
+			string url = "/partner/documents/list";
+			IRestResponse response = make_request(url, Method.GET, data: data);
+			return JArray.Parse(response.Content);
+		}
+
 		public JObject upload_document(string filename, string title = "", string description = "", string role = "", string status = "draft", Dictionary<string, string> user_data = null)
 		{
 			var data = new Dictionary<string, object>()
@@ -269,6 +282,10 @@ public class HelloWorld
 			};
 
 		var sd = new SMASHDOCs(client_id, client_key, partner_url, debug: debug, group_id: "testgrp");
+
+		JArray r0 = sd.get_documents(user_id: "ajung");
+		Console.WriteLine(r0);
+
 		JObject r1 = sd.upload_document("/tmp/test.docx", role: "editor", user_data: user_data);
 		Console.WriteLine(r1);
 
