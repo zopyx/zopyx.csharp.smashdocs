@@ -69,7 +69,7 @@ public class HelloWorld
             return Jose.JWT.Encode(payload, Encoding.ASCII.GetBytes(_client_key), JwsAlgorithm.HS256);
         }
 
-        private void  check_response(IRestResponse response, Exception exc=null)
+        private void check_response(IRestResponse response, Exception exc=null)
         {
             int status_code = (int)response.StatusCode;
             if (status_code != 200)
@@ -88,7 +88,7 @@ public class HelloWorld
             }
         }
 
-        public IRestResponse make_request(string url, Method method, Dictionary<string, object> data = null, Exception exc=null)
+        public IRestResponse make_request(string url, Method method, Dictionary<string, object> data = null, string filename=null, Exception exc=null)
         {
             var client = new RestClient(_partner_url);
             var request = new RestRequest(url, method);
@@ -96,8 +96,18 @@ public class HelloWorld
             request.AddHeader("Content-Type", "application/json");
             request.AddHeader("x-client-id", _client_id);
             request.AddHeader("Authorization", "Bearer " + get_token());
-            if (data != null)
-                request.AddJsonBody(data);
+       
+			if (filename != null)
+			{
+				request.AddParameter("data", JsonConvert.SerializeObject(data));
+				request.AddFile("file", filename);
+				request.AddHeader("Content-Type", "multipart/form-data");
+			}
+			else
+			{
+				if (data != null)
+					request.AddJsonBody(data);
+			}
             IRestResponse response = client.Execute(request);
             check_response(response, exc);
             return response;
@@ -180,16 +190,33 @@ public class HelloWorld
             return fn;
         }
 
-        public JObject new_document(string title="", string description="", string role="editor", string status="draft")
+		public JObject upload_document(string filename, string title="", string description="", string role="", string status="draft",  Dictionary<string, string> user_data=null)
+		{
+			var data = new Dictionary<string, object>()
+			{
+				{"user", user_data},
+				{"title", title},
+				{"description", description},
+				{"userRole", role},
+				{"groupId", "testgrp"},
+				{"status", status},
+				{"sectionHistory", true}
+			};
+
+
+			string endpoint = filename.ToLower().EndsWith(".docx") ? "word" : "sdxml";
+			string url = $"/partner/imports/{endpoint}/upload";
+
+			IRestResponse response = make_request(url, 
+			                                      Method.POST, 
+			                                      data: data, 
+			                                      filename: filename);
+			return JObject.Parse(response.Content);
+		}
+
+		public JObject new_document(string title = "", string description = "", string role = "editor", string status = "draft", Dictionary<string, string> user_data=null)
         {
-            var user_data = new Dictionary<string, string>()
-            {
-                {"email", "info@xx.de"},
-                {"firstname", "Henry"},
-                {"lastname", "Miller"},
-                {"userId", "testuser"},
-                {"company", "Dummies Ltd"},
-            };
+    
             var data = new Dictionary<string, object>()
             {
                 {"user", user_data},
@@ -224,10 +251,23 @@ public class HelloWorld
         }
 
 
+		var user_data = new Dictionary<string, string>()
+			{
+				{"email", "info@xx.de"},
+				{"firstname", "Henry"},
+				{"lastname", "Miller"},
+				{"userId", "testuser"},
+				{"company", "Dummies Ltd"},
+			};
+
         var sd = new SMASHDOCs(client_id, client_key, partner_url, debug);
+		JObject r1 = sd.upload_document("/tmp/test.docx", role: "editor", user_data: user_data);
+		Console.WriteLine(r1);
+
+
         JArray templates = sd.list_templates();
         Console.WriteLine(templates);
-        JObject result2  = sd.new_document("my title", "my description");
+        JObject result2  = sd.new_document("my title", "my description", user_data: user_data);
         Console.WriteLine(result2);
         string document_id = (string) result2["documentId"];
         JObject metadata = sd.document_info(document_id);
