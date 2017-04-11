@@ -1,4 +1,4 @@
-using RestSharp;
+﻿using RestSharp;
 using Jose;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -34,7 +34,16 @@ public class SMASHDOCs
 
 	public SMASHDOCs(string client_id, string client_key, string partner_url, string group_id, bool debug = false)
 	{
-		_client_id = client_id;
+        if (client_id == null)
+            throw new Exception("client_id not set");
+        if (client_key == null)
+            throw new Exception("client_key not set");
+        if (partner_url == null)
+            throw new Exception("partner_url not set");
+        if (group_id == null)
+            throw new Exception("group_id not set"); 
+        
+        _client_id = client_id;
 		_client_key = client_key;
 		_partner_url = partner_url;
 		_debug = debug;
@@ -280,7 +289,7 @@ public class Runner
 
 		var sd = new SMASHDOCs(client_id, client_key, partner_url, debug: debug, group_id: "testgrp");
 
-		JArray r0 = sd.get_documents(user_id: "ajung");
+		JArray r0 = sd.get_documents(user_id: "testuser");
 		Console.WriteLine(r0);
 
 		JObject r1 = sd.upload_document("/tmp/test.docx", role: "editor", user_data: user_data);
